@@ -1,0 +1,114 @@
+-- ============================================================
+--  Sales Data SQL Analysis Project
+--  Author : Diveshika Yadav
+--  GitHub : github.com/diveshikayadav12
+--  Email  : diveshika.yadav.cs28@iilm.edu
+-- ============================================================
+
+-- ── Table Schema ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS sales (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    month      TEXT,
+    region     TEXT,
+    category   TEXT,
+    product    TEXT,
+    quantity   INTEGER,
+    unit_price REAL,
+    revenue    REAL
+);
+
+-- ── Q1: Total Revenue ───────────────────────────────────────
+SELECT 
+    ROUND(SUM(revenue), 2)    AS total_revenue,
+    COUNT(*)                  AS total_orders,
+    ROUND(AVG(revenue), 2)    AS avg_order_value,
+    SUM(quantity)             AS total_units_sold
+FROM sales;
+
+-- ── Q2: Revenue by Region ───────────────────────────────────
+SELECT 
+    region,
+    ROUND(SUM(revenue), 2)                              AS total_revenue,
+    COUNT(*)                                            AS orders,
+    ROUND(100.0 * SUM(revenue) / 
+          (SELECT SUM(revenue) FROM sales), 2)          AS revenue_pct
+FROM sales
+GROUP BY region
+ORDER BY total_revenue DESC;
+
+-- ── Q3: Revenue by Category ─────────────────────────────────
+SELECT 
+    category,
+    ROUND(SUM(revenue), 2)    AS total_revenue,
+    SUM(quantity)             AS units_sold,
+    ROUND(AVG(unit_price), 2) AS avg_price
+FROM sales
+GROUP BY category
+ORDER BY total_revenue DESC;
+
+-- ── Q4: Top 10 Products ─────────────────────────────────────
+SELECT 
+    product,
+    category,
+    ROUND(SUM(revenue), 2) AS total_revenue,
+    SUM(quantity)          AS units_sold
+FROM sales
+GROUP BY product, category
+ORDER BY total_revenue DESC
+LIMIT 10;
+
+-- ── Q5: Monthly Revenue Trend ───────────────────────────────
+SELECT 
+    month,
+    ROUND(SUM(revenue), 2) AS monthly_revenue,
+    COUNT(*)               AS orders
+FROM sales
+GROUP BY month
+ORDER BY CASE month
+    WHEN 'Jan' THEN 1  WHEN 'Feb' THEN 2  WHEN 'Mar' THEN 3
+    WHEN 'Apr' THEN 4  WHEN 'May' THEN 5  WHEN 'Jun' THEN 6
+    WHEN 'Jul' THEN 7  WHEN 'Aug' THEN 8  WHEN 'Sep' THEN 9
+    WHEN 'Oct' THEN 10 WHEN 'Nov' THEN 11 WHEN 'Dec' THEN 12
+END;
+
+-- ── Q6: Best Region per Category ────────────────────────────
+SELECT 
+    category,
+    region,
+    ROUND(SUM(revenue), 2) AS revenue
+FROM sales
+GROUP BY category, region
+HAVING revenue = (
+    SELECT MAX(sub.revenue)
+    FROM (
+        SELECT category, region, SUM(revenue) AS revenue
+        FROM sales
+        GROUP BY category, region
+    ) sub
+    WHERE sub.category = sales.category
+)
+ORDER BY revenue DESC;
+
+-- ── Q7: High Value Orders (above average) ───────────────────
+SELECT 
+    product,
+    region,
+    month,
+    quantity,
+    ROUND(revenue, 2) AS revenue
+FROM sales
+WHERE revenue > (SELECT AVG(revenue) FROM sales)
+ORDER BY revenue DESC
+LIMIT 15;
+
+-- ── Q8: Region × Category Revenue Matrix ────────────────────
+SELECT
+    region,
+    ROUND(SUM(CASE WHEN category='Electronics' THEN revenue ELSE 0 END), 0) AS Electronics,
+    ROUND(SUM(CASE WHEN category='Clothing'    THEN revenue ELSE 0 END), 0) AS Clothing,
+    ROUND(SUM(CASE WHEN category='Food'        THEN revenue ELSE 0 END), 0) AS Food,
+    ROUND(SUM(CASE WHEN category='Furniture'   THEN revenue ELSE 0 END), 0) AS Furniture,
+    ROUND(SUM(CASE WHEN category='Sports'      THEN revenue ELSE 0 END), 0) AS Sports
+FROM sales
+GROUP BY region
+ORDER BY region;
