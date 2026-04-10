@@ -1,0 +1,122 @@
+"""
+Sales Data Analysis Project
+Author: Diveshika Yadav
+GitHub: github.com/diveshikayadav12
+Email : diveshika.yadav.cs28@iilm.edu
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+
+# ── 1. Dataset ────────────────────────────────────────────────
+np.random.seed(42)
+n = 500
+months     = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+regions    = ['North','South','East','West']
+categories = ['Electronics','Clothing','Food','Furniture','Sports']
+products   = {
+    'Electronics': ['Laptop','Mobile','Tablet','Headphones'],
+    'Clothing'   : ['T-Shirt','Jeans','Jacket','Saree'],
+    'Food'       : ['Biscuits','Tea','Coffee','Snacks'],
+    'Furniture'  : ['Chair','Table','Sofa','Shelf'],
+    'Sports'     : ['Cricket Bat','Football','Badminton','Gym Kit'],
+}
+
+rows = []
+for _ in range(n):
+    cat   = np.random.choice(categories)
+    prod  = np.random.choice(products[cat])
+    mon   = np.random.choice(months)
+    reg   = np.random.choice(regions)
+    qty   = np.random.randint(1, 50)
+    price = round(np.random.uniform(100, 5000), 2)
+    rows.append([mon, reg, cat, prod, qty, price, qty * price])
+
+df = pd.DataFrame(rows,
+    columns=['Month','Region','Category','Product','Quantity','Unit_Price','Revenue'])
+
+# ── 2. EDA ────────────────────────────────────────────────────
+print("=" * 55)
+print("   SALES DATA ANALYSIS — DIVESHIKA YADAV")
+print("=" * 55)
+print(f"\nDataset Shape  : {df.shape}")
+print(f"Total Revenue  : Rs.{df['Revenue'].sum():,.0f}")
+print(f"Avg Order Value: Rs.{df['Revenue'].mean():,.0f}")
+print(f"Total Units    : {df['Quantity'].sum():,}")
+print(f"\nNull Values:\n{df.isnull().sum()}")
+print(f"\nData Types:\n{df.dtypes}")
+
+# ── 3. Aggregations ───────────────────────────────────────────
+monthly_rev  = df.groupby('Month')['Revenue'].sum().reindex(months)
+region_rev   = df.groupby('Region')['Revenue'].sum().sort_values(ascending=False)
+category_rev = df.groupby('Category')['Revenue'].sum().sort_values(ascending=False)
+top_products = df.groupby('Product')['Revenue'].sum().nlargest(8)
+
+print("\nRevenue by Region:\n", region_rev.to_string())
+print("\nRevenue by Category:\n", category_rev.to_string())
+
+# ── 4. Dashboard ──────────────────────────────────────────────
+colors = ['#4F81BD','#C0504D','#9BBB59','#8064A2','#4BACC6']
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle('Sales Data Analysis Dashboard\nDiveshika Yadav  |  github.com/diveshikayadav12',
+             fontsize=13, fontweight='bold')
+
+# Plot 1 – Monthly Trend
+ax = axes[0, 0]
+ax.plot(months, monthly_rev.values, marker='o', color='#4F81BD',
+        linewidth=2.5, markersize=7, markerfacecolor='white', markeredgewidth=2)
+ax.fill_between(range(12), monthly_rev.values, alpha=0.15, color='#4F81BD')
+ax.set_title('Monthly Revenue Trend', fontweight='bold')
+ax.set_xlabel('Month'); ax.set_ylabel('Revenue (Rs.)')
+ax.tick_params(axis='x', rotation=45)
+ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x/1e6:.1f}M'))
+ax.grid(axis='y', alpha=0.3)
+
+# Plot 2 – Revenue by Region
+ax = axes[0, 1]
+bars = ax.bar(region_rev.index, region_rev.values, color=colors[:4], edgecolor='white', width=0.6)
+ax.set_title('Revenue by Region', fontweight='bold')
+ax.set_ylabel('Revenue (Rs.)')
+ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x/1e6:.1f}M'))
+for bar in bars:
+    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 5000,
+            f'Rs.{bar.get_height()/1e6:.2f}M', ha='center', va='bottom', fontsize=9)
+ax.grid(axis='y', alpha=0.3)
+
+# Plot 3 – Category Pie
+ax = axes[1, 0]
+wedges, texts, autotexts = ax.pie(
+    category_rev.values, labels=category_rev.index,
+    autopct='%1.1f%%', colors=colors, startangle=140,
+    wedgeprops={'edgecolor':'white','linewidth':1.5})
+for at in autotexts:
+    at.set_fontsize(9)
+ax.set_title('Revenue by Category', fontweight='bold')
+
+# Plot 4 – Top Products
+ax = axes[1, 1]
+bars = ax.barh(top_products.index[::-1], top_products.values[::-1],
+               color='#4BACC6', edgecolor='white')
+ax.set_title('Top 8 Products by Revenue', fontweight='bold')
+ax.set_xlabel('Revenue (Rs.)')
+ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f'{x/1e6:.1f}M'))
+for bar in bars:
+    ax.text(bar.get_width() + 2000, bar.get_y() + bar.get_height()/2,
+            f'Rs.{bar.get_width()/1e6:.2f}M', va='center', fontsize=8)
+ax.grid(axis='x', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('sales_dashboard.png', dpi=150, bbox_inches='tight')
+plt.show()
+print("\nDashboard saved as sales_dashboard.png")
+
+# ── 5. Insights ───────────────────────────────────────────────
+print("\n" + "=" * 55)
+print("KEY INSIGHTS")
+print("=" * 55)
+print(f"  Best Month   : {monthly_rev.idxmax()} (Rs.{monthly_rev.max():,.0f})")
+print(f"  Best Region  : {region_rev.idxmax()} (Rs.{region_rev.max():,.0f})")
+print(f"  Top Category : {category_rev.idxmax()} (Rs.{category_rev.max():,.0f})")
