@@ -1,0 +1,230 @@
+"""
+E-Commerce Sales Analysis Project
+Author  : Diveshika Yadav
+Email   : diveshika.yadav.cs28@iilm.edu
+GitHub  : github.com/diveshikayadav12
+Role    : Data Analyst Internship Project
+Tools   : Python, Pandas, NumPy, Matplotlib
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
+import warnings
+warnings.filterwarnings('ignore')
+
+# ══════════════════════════════════════════════════════════════
+# 1. DATASET GENERATION
+# ══════════════════════════════════════════════════════════════
+np.random.seed(7)
+n = 600
+
+categories = ['Electronics','Clothing','Food & Grocery','Furniture','Sports & Fitness']
+products = {
+    'Electronics'      : ['Laptop','Smartphone','Tablet','Earbuds','Smart Watch'],
+    'Clothing'         : ['T-Shirt','Jeans','Kurti','Jacket','Saree'],
+    'Food & Grocery'   : ['Organic Tea','Protein Bar','Instant Coffee','Dry Fruits','Spices'],
+    'Furniture'        : ['Office Chair','Study Table','Bookshelf','Sofa Set','Wardrobe'],
+    'Sports & Fitness' : ['Cricket Bat','Yoga Mat','Dumbbells','Badminton Kit','Cycling Gloves'],
+}
+cities   = ['Delhi','Mumbai','Bangalore','Hyderabad','Chennai','Pune','Kolkata','Jaipur']
+months   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+payment  = ['UPI','Credit Card','Debit Card','Net Banking','Cash on Delivery']
+status   = ['Delivered','Returned','Cancelled','Pending']
+status_w = [0.72, 0.10, 0.12, 0.06]
+
+rows = []
+for i in range(n):
+    cat  = np.random.choice(categories)
+    prod = np.random.choice(products[cat])
+    city = np.random.choice(cities)
+    mon  = np.random.choice(months)
+    qty  = np.random.randint(1, 15)
+    price= round(np.random.uniform(150, 8000), 2)
+    disc = round(np.random.uniform(0, 0.30), 2)
+    final= round(price * (1 - disc) * qty, 2)
+    pay  = np.random.choice(payment)
+    stat = np.random.choice(status, p=status_w)
+    rating = round(np.random.uniform(2.5, 5.0), 1)
+    rows.append([i+1, mon, city, cat, prod, qty, price, disc, final, pay, stat, rating])
+
+cols = ['Order_ID','Month','City','Category','Product','Quantity',
+        'Unit_Price','Discount','Final_Revenue','Payment_Mode','Order_Status','Rating']
+df = pd.DataFrame(rows, columns=cols)
+
+# ══════════════════════════════════════════════════════════════
+# 2. DATA CLEANING
+# ══════════════════════════════════════════════════════════════
+print("="*60)
+print("   E-COMMERCE SALES ANALYSIS — DIVESHIKA YADAV")
+print("="*60)
+print(f"\nDataset Shape   : {df.shape}")
+print(f"Null Values     : {df.isnull().sum().sum()}")
+print(f"Duplicate Rows  : {df.duplicated().sum()}")
+
+# Only delivered orders for revenue analysis
+df_clean = df[df['Order_Status'] == 'Delivered'].copy()
+print(f"\nDelivered Orders: {len(df_clean)} / {len(df)}")
+
+# ══════════════════════════════════════════════════════════════
+# 3. ANALYSIS
+# ══════════════════════════════════════════════════════════════
+total_rev    = df_clean['Final_Revenue'].sum()
+avg_order    = df_clean['Final_Revenue'].mean()
+total_units  = df_clean['Quantity'].sum()
+avg_rating   = df_clean['Rating'].mean()
+
+monthly_rev  = df_clean.groupby('Month')['Final_Revenue'].sum().reindex(months)
+city_rev     = df_clean.groupby('City')['Final_Revenue'].sum().sort_values(ascending=False)
+cat_rev      = df_clean.groupby('Category')['Final_Revenue'].sum().sort_values(ascending=False)
+pay_rev      = df_clean.groupby('Payment_Mode')['Final_Revenue'].sum().sort_values(ascending=False)
+top_prod     = df_clean.groupby('Product')['Final_Revenue'].sum().nlargest(8)
+status_dist  = df['Order_Status'].value_counts()
+
+print(f"\n{'─'*40}")
+print("  KEY METRICS")
+print(f"{'─'*40}")
+print(f"  Total Revenue   : Rs. {total_rev:>12,.0f}")
+print(f"  Total Orders    : {len(df_clean):>15,}")
+print(f"  Avg Order Value : Rs. {avg_order:>12,.0f}")
+print(f"  Total Units     : {total_units:>15,}")
+print(f"  Avg Rating      : {avg_rating:>14.2f} / 5")
+print(f"{'─'*40}")
+
+print(f"\nRevenue by City:\n{city_rev.to_string()}")
+print(f"\nRevenue by Category:\n{cat_rev.to_string()}")
+print(f"\nPayment Mode Preference:\n{pay_rev.to_string()}")
+
+# ══════════════════════════════════════════════════════════════
+# 4. VISUALISATION DASHBOARD
+# ══════════════════════════════════════════════════════════════
+fig = plt.figure(figsize=(18, 13))
+fig.patch.set_facecolor('#F8F9FA')
+gs  = gridspec.GridSpec(3, 3, figure=fig, hspace=0.45, wspace=0.35)
+
+BLUE  = '#2E86AB'; RED   = '#E84855'; GREEN = '#3BB273'
+PURP  = '#7B2D8B'; ORG   = '#F4A261'
+PALS  = [BLUE, RED, GREEN, PURP, ORG, '#264653', '#E9C46A', '#A8DADC']
+
+def fmt_ax(ax):
+    ax.set_facecolor('#FFFFFF')
+    ax.spines[['top','right']].set_visible(False)
+    ax.grid(axis='y', alpha=0.25, linestyle='--')
+
+# ── Title ────────────────────────────────────────────────────
+fig.text(0.5, 0.97,
+         'E-Commerce Sales Analysis Dashboard',
+         ha='center', fontsize=16, fontweight='bold', color='#1A1A2E')
+fig.text(0.5, 0.945,
+         'Diveshika Yadav  |  diveshika.yadav.cs28@iilm.edu  |  github.com/diveshikayadav12',
+         ha='center', fontsize=9, color='#555555')
+
+# ── Plot 1: Monthly Revenue Trend ───────────────────────────
+ax1 = fig.add_subplot(gs[0, :2])
+ax1.plot(months, monthly_rev.values, marker='o', color=BLUE,
+         linewidth=2.5, markersize=8, markerfacecolor='white', markeredgewidth=2.5)
+ax1.fill_between(range(12), monthly_rev.values, alpha=0.12, color=BLUE)
+ax1.set_title('Monthly Revenue Trend', fontweight='bold', pad=10)
+ax1.set_xticks(range(12)); ax1.set_xticklabels(months)
+ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'Rs.{x/1e6:.1f}M'))
+fmt_ax(ax1)
+best_mon = monthly_rev.idxmax()
+bx = months.index(best_mon)
+ax1.annotate(f'Peak: {best_mon}',
+             xy=(bx, monthly_rev.max()),
+             xytext=(bx+1, monthly_rev.max()*1.05),
+             fontsize=8, color=RED,
+             arrowprops=dict(arrowstyle='->', color=RED, lw=1.2))
+
+# ── Plot 2: Order Status Donut ───────────────────────────────
+ax2 = fig.add_subplot(gs[0, 2])
+wedges, texts, autotexts = ax2.pie(
+    status_dist.values, labels=status_dist.index,
+    autopct='%1.1f%%', colors=[GREEN, RED, ORG, PURP],
+    startangle=90, wedgeprops={'edgecolor':'white','linewidth':2},
+    pctdistance=0.80)
+for at in autotexts: at.set_fontsize(8)
+centre = plt.Circle((0,0), 0.55, fc='white')
+ax2.add_patch(centre)
+ax2.set_title('Order Status Distribution', fontweight='bold', pad=10)
+
+# ── Plot 3: Revenue by Category ─────────────────────────────
+ax3 = fig.add_subplot(gs[1, 0])
+bars = ax3.barh(cat_rev.index[::-1], cat_rev.values[::-1],
+                color=PALS[:len(cat_rev)], edgecolor='white', height=0.6)
+ax3.set_title('Revenue by Category', fontweight='bold', pad=10)
+ax3.xaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'{x/1e6:.1f}M'))
+ax3.set_facecolor('#FFFFFF')
+ax3.spines[['top','right']].set_visible(False)
+ax3.grid(axis='x', alpha=0.25, linestyle='--')
+for bar in bars:
+    ax3.text(bar.get_width()+1000, bar.get_y()+bar.get_height()/2,
+             f'Rs.{bar.get_width()/1e6:.2f}M', va='center', fontsize=8)
+
+# ── Plot 4: Top 8 Products ───────────────────────────────────
+ax4 = fig.add_subplot(gs[1, 1])
+ax4.bar(range(len(top_prod)), top_prod.values, color=BLUE, edgecolor='white', width=0.6)
+ax4.set_xticks(range(len(top_prod)))
+ax4.set_xticklabels(top_prod.index, rotation=40, ha='right', fontsize=8)
+ax4.set_title('Top 8 Products by Revenue', fontweight='bold', pad=10)
+ax4.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'Rs.{x/1e6:.1f}M'))
+fmt_ax(ax4)
+
+# ── Plot 5: Payment Mode ────────────────────────────────────
+ax5 = fig.add_subplot(gs[1, 2])
+ax5.bar(pay_rev.index, pay_rev.values, color=PALS[:len(pay_rev)], edgecolor='white', width=0.6)
+ax5.set_title('Revenue by Payment Mode', fontweight='bold', pad=10)
+ax5.set_xticklabels(pay_rev.index, rotation=30, ha='right', fontsize=8)
+ax5.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'Rs.{x/1e6:.1f}M'))
+fmt_ax(ax5)
+
+# ── Plot 6: City Revenue ────────────────────────────────────
+ax6 = fig.add_subplot(gs[2, :2])
+bars6 = ax6.bar(city_rev.index, city_rev.values, color=PALS[:len(city_rev)], edgecolor='white', width=0.6)
+ax6.set_title('Revenue by City', fontweight='bold', pad=10)
+ax6.yaxis.set_major_formatter(plt.FuncFormatter(lambda x,_: f'Rs.{x/1e6:.1f}M'))
+fmt_ax(ax6)
+for bar in bars6:
+    ax6.text(bar.get_x()+bar.get_width()/2, bar.get_height()+2000,
+             f'Rs.{bar.get_height()/1e6:.2f}M', ha='center', fontsize=8)
+
+# ── Plot 7: KPI Box ─────────────────────────────────────────
+ax7 = fig.add_subplot(gs[2, 2])
+ax7.axis('off')
+kpis = [
+    ("Total Revenue",   f"Rs. {total_rev/1e6:.2f}M"),
+    ("Total Orders",    f"{len(df_clean):,}"),
+    ("Avg Order Value", f"Rs. {avg_order:,.0f}"),
+    ("Avg Rating",      f"{avg_rating:.2f} / 5.0"),
+    ("Total Units Sold",f"{total_units:,}"),
+]
+ax7.set_xlim(0,1); ax7.set_ylim(0,1)
+ax7.set_title('Key Metrics', fontweight='bold', pad=10)
+for i, (label, val) in enumerate(kpis):
+    y = 0.88 - i*0.18
+    ax7.add_patch(plt.Rectangle((0.02, y-0.07), 0.96, 0.14,
+                                 facecolor='#EBF5FB', edgecolor='#AED6F1', linewidth=1, radius=0.02))
+    ax7.text(0.06, y+0.01, label, fontsize=8,  color='#555', va='center')
+    ax7.text(0.94, y+0.01, val,   fontsize=9,  color='#1A1A2E', va='center', ha='right', fontweight='bold')
+
+plt.savefig('/home/claude/ecom_project/ecommerce_dashboard.png', dpi=150, bbox_inches='tight', facecolor='#F8F9FA')
+print("\nDashboard saved: ecommerce_dashboard.png")
+
+# ══════════════════════════════════════════════════════════════
+# 5. KEY INSIGHTS
+# ══════════════════════════════════════════════════════════════
+print("\n" + "="*60)
+print("  KEY BUSINESS INSIGHTS")
+print("="*60)
+print(f"  1. Best Month    : {monthly_rev.idxmax()} (Rs.{monthly_rev.max():,.0f})")
+print(f"  2. Top City      : {city_rev.idxmax()} (Rs.{city_rev.max():,.0f})")
+print(f"  3. Top Category  : {cat_rev.idxmax()} (Rs.{cat_rev.max():,.0f})")
+print(f"  4. Top Product   : {top_prod.idxmax()} (Rs.{top_prod.max():,.0f})")
+print(f"  5. Top Payment   : {pay_rev.idxmax()}")
+print(f"  6. Delivery Rate : {status_dist.get('Delivered',0)/len(df)*100:.1f}%")
+print(f"  7. Return Rate   : {status_dist.get('Returned',0)/len(df)*100:.1f}%")
+print("="*60)
+
+df.to_csv('/home/claude/ecom_project/ecommerce_data.csv', index=False)
+print("\nDataset saved: ecommerce_data.csv")
